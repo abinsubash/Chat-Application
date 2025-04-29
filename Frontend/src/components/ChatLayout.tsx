@@ -43,33 +43,34 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
   // Fetch recent chats
   const fetchRecentChats = useCallback(async () => {
     try {
-      const response = await api.get('/recent-chats');
+      const response = await api.get("/recent-chats");
       if (response.data.success) {
-        console.log('this is response data in recent data', response.data);
+        console.log("this is response data in recent data", response.data);
         setRecentChats(response.data.chats);
       }
     } catch (error) {
-      console.error('Error fetching recent chats:', error);
+      console.error("Error fetching recent chats:", error);
     }
   }, []); // add dependencies if needed (e.g., user?._id)
-  
+
   useEffect(() => {
     fetchRecentChats();
   }, [fetchRecentChats]);
-  
 
   // Update recent chats when new message arrives
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('receiveMessage', (newMessage) => {
-      setRecentChats(prev => {
+    socket.on("receiveMessage", (newMessage) => {
+      setRecentChats((prev) => {
         const updatedChats = [...prev];
-        const chatUserId = newMessage.senderId === user?._id ? 
-          newMessage.receiverId : newMessage.senderId;
-        
-        const chatIndex = updatedChats.findIndex(chat => 
-          chat._id === chatUserId
+        const chatUserId =
+          newMessage.senderId === user?._id
+            ? newMessage.receiverId
+            : newMessage.senderId;
+
+        const chatIndex = updatedChats.findIndex(
+          (chat) => chat._id === chatUserId
         );
 
         if (chatIndex > -1) {
@@ -78,10 +79,12 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
             ...updatedChats[chatIndex],
             lastMessage: {
               message: newMessage.message,
-              createdAt: newMessage.createdAt
+              createdAt: newMessage.createdAt,
             },
-            unreadCount: selectedUser?._id !== chatUserId ? 
-              (updatedChats[chatIndex].unreadCount + 1) : 0
+            unreadCount:
+              selectedUser?._id !== chatUserId
+                ? updatedChats[chatIndex].unreadCount + 1
+                : 0,
           };
           // Move this chat to top
           const [chat] = updatedChats.splice(chatIndex, 1);
@@ -94,9 +97,9 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
             username: newMessage.senderUsername || newMessage.receiverUsername,
             lastMessage: {
               message: newMessage.message,
-              createdAt: newMessage.createdAt
+              createdAt: newMessage.createdAt,
             },
-            unreadCount: selectedUser?._id !== chatUserId ? 1 : 0
+            unreadCount: selectedUser?._id !== chatUserId ? 1 : 0,
           };
           return [newChat, ...updatedChats];
         }
@@ -104,18 +107,16 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
     });
 
     return () => {
-      socket.off('receiveMessage');
+      socket.off("receiveMessage");
     };
   }, [socket, user?._id, selectedUser?._id]);
 
   // Reset unread count when selecting a user
   useEffect(() => {
     if (selectedUser) {
-      setRecentChats(prev => 
-        prev.map(chat => 
-          chat._id === selectedUser._id 
-            ? { ...chat, unreadCount: 0 }
-            : chat
+      setRecentChats((prev) =>
+        prev.map((chat) =>
+          chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
         )
       );
     }
@@ -169,11 +170,35 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  // Mark messages as read when selecting a user
+  const handleUserSelect = async (selectedChat: User) => {
+    setSelectedUser(selectedChat);
+    try {
+      // Mark messages as read
+      await api.put(`/messages/read/${selectedChat._id}`);
+      
+      // Update local state to remove unread count
+      setRecentChats(prev =>
+        prev.map(chat =>
+          chat._id === selectedChat._id
+            ? { ...chat, unreadCount: 0 }
+            : chat
+        )
+      );
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+
   return (
     <div className="h-screen w-full flex bg-gray-900">
       {/* Mobile menu button - always visible when there's a selected user */}
-      <button 
-        onClick={toggleSidebar} 
+      <button
+        onClick={toggleSidebar}
         className="md:hidden fixed top-4 left-4 z-50 bg-gray-800 p-2 rounded-full text-white"
         aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
       >
@@ -181,15 +206,15 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
       </button>
 
       {/* Sidebar */}
-      <div 
+      <div
         className={`bg-gray-950 text-white w-full md:w-1/3 lg:w-1/4 h-full flex flex-col border-r border-gray-800 transition-all duration-300 fixed md:relative z-40 ${
           sidebarOpen ? "left-0" : "-left-full md:left-0"
         }`}
-        style={{backgroundColor: "#111827"}} // Ensuring consistent dark background
+        style={{ backgroundColor: "#111827" }} // Ensuring consistent dark background
       >
         <div className="flex items-center justify-between p-3 border-b border-gray-800">
-          <h2 
-            className="cursor-pointer text-xl font-bold text-green-400" 
+          <h2
+            className="cursor-pointer text-xl font-bold text-green-400"
             onClick={() => setSelectedUser(null)}
           >
             ChatApp
@@ -218,7 +243,10 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
         {showSearch && (
           <div className="p-3 border-b border-gray-800">
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-3 text-gray-500" />
+              <Search
+                size={16}
+                className="absolute left-3 top-3 text-gray-500"
+              />
               <input
                 type="text"
                 value={input}
@@ -230,7 +258,10 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
           </div>
         )}
 
-        <div className="overflow-y-auto flex-grow bg-gray-950" style={{backgroundColor: "#111827"}}>
+        <div
+          className="overflow-y-auto flex-grow bg-gray-950"
+          style={{ backgroundColor: "#111827" }}
+        >
           {showSearch && input ? (
             searchUser.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-gray-400">
@@ -265,14 +296,9 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
                   <div
                     key={chat._id}
                     className={`p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-800 transition-colors ${
-                      selectedUser?._id === chat._id ? 'bg-gray-800' : ''
+                      selectedUser?._id === chat._id ? "bg-gray-800" : ""
                     }`}
-                    onClick={() => {
-                      setSelectedUser(chat);
-                      if (window.innerWidth < 768) {
-                        setSidebarOpen(false);
-                      }
-                    }}
+                    onClick={() => handleUserSelect(chat)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -280,12 +306,17 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
                           <FaUserCircle size={20} className="text-gray-300" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-medium text-sm">{chat.name}</span>
+                          <span className="font-medium text-sm">
+                            {chat.name}
+                          </span>
                           <span className="text-xs text-gray-400">
-                            {chat.lastMessage?.message 
-                              ? `${chat.lastMessage.message.substring(0, 20)}${chat.lastMessage.message.length > 20 ? '...' : ''}`
-                              : '@' + chat.username
-                            }
+                            {chat.lastMessage?.message
+                              ? `${chat.lastMessage.message.substring(0, 20)}${
+                                  chat.lastMessage.message.length > 20
+                                    ? "..."
+                                    : ""
+                                }`
+                              : "@" + chat.username}
                           </span>
                         </div>
                       </div>
@@ -306,7 +337,10 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
           )}
         </div>
 
-        <div className="p-3 border-t border-gray-800 bg-gray-950" style={{backgroundColor: "#111827"}}>
+        <div
+          className="p-3 border-t border-gray-800 bg-gray-950"
+          style={{ backgroundColor: "#111827" }}
+        >
           {user && (
             <div className="flex items-center justify-between mb-3 p-2 bg-gray-900 rounded-lg">
               <div className="flex items-center gap-3">
@@ -340,15 +374,25 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
                   <FaUserCircle size={20} className="text-green-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-base font-semibold">{selectedUser.name}</span>
-                  <span className="text-xs text-gray-400">@{selectedUser.username}</span>
+                  <span className="text-base font-semibold">
+                    {selectedUser.name}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    @{selectedUser.username}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="p-1.5 rounded-full hover:bg-gray-800 transition-colors" aria-label="Voice call">
+                <button
+                  className="p-1.5 rounded-full hover:bg-gray-800 transition-colors"
+                  aria-label="Voice call"
+                >
                   <Phone size={18} className="text-green-400" />
                 </button>
-                <button className="p-1.5 rounded-full hover:bg-gray-800 transition-colors" aria-label="Video call">
+                <button
+                  className="p-1.5 rounded-full hover:bg-gray-800 transition-colors"
+                  aria-label="Video call"
+                >
                   <Video size={18} className="text-blue-400" />
                 </button>
               </div>
@@ -360,9 +404,11 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
             <div className="bg-gray-800 p-6 rounded-lg text-center max-w-md">
               <FaUserCircle size={48} className="mx-auto mb-4 text-green-400" />
               <h2 className="text-xl font-bold mb-2">Welcome to ChatApp</h2>
-              <p className="text-gray-400 mb-4 text-sm">Select a user from the sidebar to start chatting</p>
+              <p className="text-gray-400 mb-4 text-sm">
+                Select a user from the sidebar to start chatting
+              </p>
               {!sidebarOpen && (
-                <button 
+                <button
                   onClick={toggleSidebar}
                   className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
                 >

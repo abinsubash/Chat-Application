@@ -186,7 +186,6 @@ export const getMessages = async (req: CustomRequest, res: Response): Promise<an
 export const getRecentChats = async (req: CustomRequest, res: Response) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user?._id);
-    console.log('This is user id',userId)
 
     const chatUsers = await Message.aggregate([
       {
@@ -214,8 +213,13 @@ export const getRecentChats = async (req: CustomRequest, res: Response) => {
           unreadCount: {
             $sum: {
               $cond: [
-                { $eq: ['$receiverId', userId] },
-                { $cond: [{ $eq: ['$read', false] }, 1, 0] },
+                {
+                  $and: [
+                    { $eq: ['$receiverId', userId] },
+                    { $eq: ['$read', false] }
+                  ]
+                },
+                1,
                 0
               ]
             }
@@ -223,8 +227,6 @@ export const getRecentChats = async (req: CustomRequest, res: Response) => {
         }
       }
     ]);
-    
-    console.log('this is recent data',chatUsers)
 
     const userDetails = await User.find({
       _id: { $in: chatUsers.map(chat => chat._id) }
@@ -253,6 +255,81 @@ export const getRecentChats = async (req: CustomRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching recent chats'
+    });
+  }
+};
+
+export const markMessagesAsRead = async (req: CustomRequest, res: Response) => {
+  try {
+    const receiverId = req.user?._id;
+    const { senderId } = req.params;
+
+    // Update all unread messages from this sender to this receiver
+    await Message.updateMany(
+      {
+        senderId,
+        receiverId,
+        read: false
+      },
+      {
+        $set: { read: true }
+      }
+    );
+
+    // Update the unread count in recent chats query
+    const updatedCount = await Message.countDocuments({
+      senderId,
+      receiverId,
+      read: false
+    });
+
+    res.json({
+      success: true,
+      unreadCount: updatedCount
+    });
+
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating message status'
+    });
+  }
+};
+
+export const getUnreadMessageCounts = async (req: CustomRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
+          receiverId: userId,
+          read: false
+        }
+      },
+      {
+        $group: {
+          _id: '$senderId',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const counts = unreadCounts.reduce((acc, curr) => ({
+      ...acc,
+      [curr._id]: curr.count
+    }), {});
+
+    res.json({
+      success: true,
+      counts
+    });
+  } catch (error) {
+    console.error('Error fetching unread counts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching unread counts'
     });
   }
 };

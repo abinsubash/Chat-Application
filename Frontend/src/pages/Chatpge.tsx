@@ -7,6 +7,7 @@ import { RootState } from "@/store/store";
 import api from "@/services/api";
 import { Send, Smile, Image, Paperclip, Mic } from "lucide-react";
 import { useSocket } from "@/context/SocketContext";
+import socket from "socket.io-client";
 
 interface Message {
   _id: string;
@@ -79,7 +80,7 @@ const Chatpage = () => {
   }, [messages]);
 
   const sendMessage = () => {
-    if (!input.trim() || !selectedUser || !user) return;
+    if (!input.trim() || !selectedUser || !user || !socket) return;
 
     const messageData = {
       senderId: user._id,
@@ -87,7 +88,7 @@ const Chatpage = () => {
       text: input.trim(),
     };
 
-    socket.emit('sendMessage', messageData);
+    socket.emit('sendMessage', messageData); // Changed Socket to socket
     setInput('');
   };
 
