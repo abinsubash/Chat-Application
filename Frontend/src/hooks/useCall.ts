@@ -125,19 +125,35 @@ export const useCall = (socket: Socket | null) => {
   const startCall = async (targetUserId: string) => {
     try {
       setStatus('calling');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request audio with specific constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       setLocalStream(stream);
 
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
 
-      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      // Add audio track to peer connection
+      stream.getAudioTracks().forEach(track => {
+        console.log('Adding audio track:', track.label);
+        pc.addTrack(track, stream);
+      });
 
+      // Handle remote audio stream
       pc.ontrack = (event) => {
+        console.log('Received remote track:', event.track.kind);
         if (remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch(console.error);
+          remoteAudioRef.current.autoplay = true;
+          remoteAudioRef.current.play().catch(error => {
+            console.error('Error playing remote audio:', error);
+          });
         }
       };
 
@@ -150,47 +166,61 @@ export const useCall = (socket: Socket | null) => {
         }
       };
 
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false
+      });
+      
       await pc.setLocalDescription(offer);
+      setPeerConnection(pc);
 
       socket?.emit('call-user', {
         to: targetUserId,
-        offer,
+        offer
       });
 
-      setPeerConnection(pc);
     } catch (error) {
-      setError('Failed to start call. Please check your microphone permissions.');
+      console.error('Error in startCall:', error);
+      setError('Failed to start call');
       setStatus('error');
     }
   };
 
   const answerCall = async () => {
-    if (!socket || !callData) {
-      setError('Invalid call state');
-      return;
-    }
+    if (!socket || !callData) return;
 
     try {
-      setStatus('connected');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       setLocalStream(stream);
 
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
 
-      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      // Add local audio track
+      stream.getAudioTracks().forEach(track => {
+        console.log('Adding audio track:', track.label);
+        pc.addTrack(track, stream);
+      });
 
-      // Handle remote track
+      // Handle remote audio
       pc.ontrack = (event) => {
+        console.log('Received remote track:', event.track.kind);
         if (remoteAudioRef.current) {
           remoteAudioRef.current.srcObject = event.streams[0];
-          remoteAudioRef.current.play().catch(console.error);
+          remoteAudioRef.current.autoplay = true;
+          remoteAudioRef.current.play().catch(error => {
+            console.error('Error playing remote audio:', error);
+          });
         }
       };
 
-      // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate && socket && callData) {
           socket.emit('ice-candidate', {
@@ -206,17 +236,16 @@ export const useCall = (socket: Socket | null) => {
 
       socket.emit('answer-call', {
         to: callData.from,
-        answer,
+        answer
       });
 
       setPeerConnection(pc);
       setIncomingCall(false);
-      setCallData(null);
+
     } catch (error) {
-      setError('Failed to answer call. Please check your microphone permissions.');
+      console.error('Error in answerCall:', error);
+      setError('Failed to answer call');
       setStatus('error');
-      console.error('Error answering call:', error);
-      endCall();
     }
   };
 

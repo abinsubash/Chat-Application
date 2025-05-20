@@ -466,8 +466,12 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
         )}
       </div>
 
-      {/* Add this audio element for remote audio */}
-      <audio ref={remoteAudioRef} style={{ display: 'none' }} />
+      {/* Update audio element with proper attributes */}
+      <audio 
+        ref={remoteAudioRef}
+        autoPlay
+        style={{ display: 'none' }}
+      />
       
       {/* Replace the old call UI with the new one */}
       {(incomingCall || peerConnection) && (
