@@ -466,11 +466,12 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
         )}
       </div>
 
-      {/* Update audio element with proper attributes */}
+      {/* Audio element for remote stream */}
       <audio 
         ref={remoteAudioRef}
         autoPlay
-        style={{ display: 'none' }}
+        controls // temporarily add controls for testing
+        style={{ position: 'fixed', bottom: 0, left: 0, zIndex: 50 }} // temporarily make visible for testing
       />
       
       {/* Replace the old call UI with the new one */}
