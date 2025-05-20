@@ -12,7 +12,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     // Only create socket if user is authenticated
     if (user?.accessToken) {
-      const newSocket = io('http://localhost:5000', {
+      const newSocket = io('https://chat-application-lf8s.onrender.com', {
         auth: {
           token: user.accessToken
         }

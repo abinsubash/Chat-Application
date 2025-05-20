@@ -4,7 +4,7 @@ import { setUser } from '../store/slice';
 import type { UserData } from '../store/slice';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: 'https://chat-application-lf8s.onrender.com',
   withCredentials: true
 });
 

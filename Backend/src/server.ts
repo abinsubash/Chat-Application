@@ -16,7 +16,7 @@ connectDB();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://chat-application-sandy-one.vercel.app",
     credentials: true,
   })
 );
@@ -26,7 +26,7 @@ app.use(cookieParser());
 const server = http.createServer(app);
 export const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || 'https://chat-application-sandy-one.vercel.app',
     methods: ['GET', 'POST']
   }
 });

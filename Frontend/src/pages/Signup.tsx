@@ -60,7 +60,7 @@ const Signup = () => {
 
     if (isValid) {
       try {
-        const response = await axios.post("http://localhost:5000/signup", form);
+        const response = await axios.post("https://chat-application-lf8s.onrender.com/signup", form);
         if (!response.data.success) {
           toast.error(response.data.message);
         } else {
