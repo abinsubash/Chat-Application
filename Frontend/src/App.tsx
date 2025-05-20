@@ -9,6 +9,7 @@ import { persistor } from "./store/persist";
 import ProtectedRoute from "./router/protectedRouter";
 import { SocketProvider } from "./context/SocketContext";
 import { SelectedUserProvider } from "@/context/SelectedUserContext";
+import { CallStatusProvider } from './context/CallStatusContext';
 
 function App() {
   return (
@@ -16,34 +17,36 @@ function App() {
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
           <SocketProvider>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute authRequired={false}>
-                    <Login />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/signup"
-                element={
-                  <ProtectedRoute authRequired={false}>
-                    <Signup />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/chat"
-                element={
-                  <ProtectedRoute>
-                    <SelectedUserProvider>
-                      <Chatpge />
-                    </SelectedUserProvider>
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
+            <CallStatusProvider>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute authRequired={false}>
+                      <Login />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/signup"
+                  element={
+                    <ProtectedRoute authRequired={false}>
+                      <Signup />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/chat"
+                  element={
+                    <ProtectedRoute>
+                      <SelectedUserProvider>
+                        <Chatpge />
+                      </SelectedUserProvider>
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </CallStatusProvider>
           </SocketProvider>
         </PersistGate>
       </Provider>

@@ -3,10 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store/store";
 import { Video, Phone, Search, Menu, X, LogOut } from "lucide-react";
 import { FaUserCircle } from "react-icons/fa";
-import { ReactNode, useState, useEffect, useCallback } from "react";
+import { ReactNode, useState, useEffect, useCallback, useRef } from "react";
 import api, { searchUsers } from "@/services/api";
 import { useSelectedUser } from "@/context/SelectedUserContext";
 import { useSocket } from "@/context/SocketContext";
+import { useCall } from '@/hooks/useCall';
+import CallUI from './CallUI';
 
 interface User {
   _id: string;
@@ -39,6 +41,18 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
   const [showSearch, setShowSearch] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const socket = useSocket();
+  const { 
+    startCall, 
+    endCall, 
+    incomingCall, 
+    remoteAudioRef,
+    peerConnection,
+    localStream,
+    answerCall
+  } = useCall(socket);
+  const [isMuted, setIsMuted] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const callTimerRef = useRef<NodeJS.Timeout>(null);
 
   // Fetch recent chats
   const fetchRecentChats = useCallback(async () => {
@@ -193,6 +207,37 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
       setSidebarOpen(false);
     }
   };
+
+  const handleVoiceCall = () => {
+    if (selectedUser) {
+      startCall(selectedUser._id);
+    }
+  };
+
+  useEffect(() => {
+    if (peerConnection) {
+      callTimerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+
+      return () => {
+        if (callTimerRef.current) {
+          clearInterval(callTimerRef.current);
+        }
+        setCallDuration(0);
+      };
+    }
+  }, [peerConnection]);
+
+  const handleToggleMute = useCallback(() => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
+      }
+    }
+  }, [localStream]);
 
   return (
     <div className="h-screen w-full flex bg-gray-900">
@@ -386,6 +431,7 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
                 <button
                   className="p-1.5 rounded-full hover:bg-gray-800 transition-colors"
                   aria-label="Voice call"
+                  onClick={handleVoiceCall}
                 >
                   <Phone size={18} className="text-green-400" />
                 </button>
@@ -419,6 +465,22 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
           </div>
         )}
       </div>
+
+      {/* Add this audio element for remote audio */}
+      <audio ref={remoteAudioRef} style={{ display: 'none' }} />
+      
+      {/* Replace the old call UI with the new one */}
+      {(incomingCall || peerConnection) && (
+        <CallUI
+          isIncoming={incomingCall && !peerConnection}
+          callerName={selectedUser?.name}
+          onAccept={answerCall}
+          onDecline={endCall}
+          onToggleMute={handleToggleMute}
+          isMuted={isMuted}
+          callDuration={callDuration}
+        />
+      )}
     </div>
   );
 };
