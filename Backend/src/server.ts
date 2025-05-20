@@ -6,7 +6,8 @@ import cookieParser from 'cookie-parser';
 import http from 'http';
 import { Server } from 'socket.io';
 import Message from "./models/Message";
-
+import dotenv from 'dotenv'
+dotenv.config()
 const app: Application = express();
 const PORT = 5000;
 connectDB();
