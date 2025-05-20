@@ -6,6 +6,7 @@ export const useCall = (socket: Socket | null) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [incomingCall, setIncomingCall] = useState(false);
   const [callData, setCallData] = useState<any>(null);
+  const [isCallEnded, setIsCallEnded] = useState(false);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const iceCandidatesQueue = useRef<RTCIceCandidate[]>([]);
 
@@ -174,31 +175,60 @@ export const useCall = (socket: Socket | null) => {
       }
     });
 
+    socket.on('call-ended', () => {
+      console.log('Received call-ended event');
+      setIsCallEnded(true);
+      endCall();
+    });
+
     return () => {
       socket.off('incoming-call');
       socket.off('ice-candidate');
       socket.off('call-answered');
+      socket.off('call-ended');
     };
   }, [socket, peerConnection]);
+
+  const endCall = useCallback(() => {
+    console.log('Ending call...');
+    if (socket && (callData?.from)) {
+      socket.emit('end-call', {
+        to: callData?.from
+      });
+    }
+
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log('Audio track stopped');
+      });
+      setLocalStream(null);
+    }
+
+    if (peerConnection) {
+      peerConnection.close();
+      console.log('Peer connection closed');
+      setPeerConnection(null);
+    }
+
+    setIncomingCall(false);
+    setCallData(null);
+    setIsCallEnded(true);
+
+    // Reset call ended state after cleanup
+    setTimeout(() => {
+      setIsCallEnded(false);
+    }, 100);
+  }, [socket, callData, localStream, peerConnection]);
 
   return {
     startCall,
     answerCall,
-    endCall: useCallback(() => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      if (peerConnection) {
-        peerConnection.close();
-      }
-      setLocalStream(null);
-      setPeerConnection(null);
-      setIncomingCall(false);
-      setCallData(null);
-    }, [localStream, peerConnection]),
+    endCall,
     incomingCall,
     remoteAudioRef,
     peerConnection,
-    localStream
+    localStream,
+    isCallEnded
   };
 };

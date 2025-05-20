@@ -48,7 +48,8 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
     remoteAudioRef,
     peerConnection,
     localStream,
-    answerCall
+    answerCall,
+    isCallEnded
   } = useCall(socket);
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -474,7 +475,7 @@ const ChatLayout = ({ children }: ChatLayoutProps) => {
       />
       
       {/* Replace the old call UI with the new one */}
-      {(incomingCall || peerConnection) && (
+      {(incomingCall || (peerConnection && !isCallEnded)) && (
         <CallUI
           isIncoming={incomingCall && !peerConnection}
           callerName={selectedUser?.name}
